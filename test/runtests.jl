@@ -7,10 +7,11 @@ using Test
     p_new2 = RadiationPyrometers.Pyrometer(type="TEST1",λ=18.0,ϵ=0.99) # creating narrow-band pyrometer
     push!(p_vector,p_new)
     push!(p_vector,p_new2)
+    @show p_vector
     N = length(p_vector)
     Treal = 1235.0 # this is the real temperature of the surface
     Tmeasured = fill(1375.0,N) #input data, all pyrometers "measure" the same temperature
-    RadiationPyrometers.fit_ϵ(p_vector,1235.0,Tmeasured) # fitting the emissivity of each pyrometer
+    RadiationPyrometers.fit_ϵ!(p_vector,1235.0,Tmeasured) # fitting the emissivity of each pyrometer
     Tmeasured_calc = Vector{Float64}(undef,N) #
     for (i,p) in enumerate(p_vector)
         if RadiationPyrometers.is_narrow_band(p)

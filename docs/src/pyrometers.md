@@ -3,5 +3,5 @@
 
 ```@autodocs
     Modules = [RadiationPyrometers]
-    Order   = [:const,:function, :type]
+    Order   = [:module,:type,:constant,:function]
 ```
