@@ -9,6 +9,7 @@ makedocs(
         format=Documenter.HTML(size_threshold = 2000 * 2^10),
         pages=[
                 "Home" => "index.md"
+                "Examples"=>"pluto.md"
                 "RadiationPyrometers" => "pyrometers.md"
                ]#
 			   )

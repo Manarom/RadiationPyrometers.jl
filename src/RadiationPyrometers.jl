@@ -17,11 +17,11 @@ module RadiationPyrometers
 const DefaultPyrometersTypes = OrderedDict(
                     "P"=> SVector{2}([2.0; 2.6]),
                     "M"=> SVector{1}([3.4]), 
-                    "D"=>SVector{1}([3.9]),
+                    "D"=> SVector{1}([3.9]),
                     "L"=> SVector{1}([4.6]),
-                    "E"=>SVector{2}([4.8, 5.2]),
-                    "F"=>SVector{1}([7.9]),
-                    "K"=>SVector{2}([8.0, 9.0]),
+                    "E"=> SVector{2}([4.8, 5.2]),
+                    "F"=> SVector{1}([7.9]),
+                    "K"=> SVector{2}([8.0, 9.0]),
                     "B"=> SVector{2}([9.1,14.0])
     )
     
@@ -69,6 +69,12 @@ wlength(::Pyrometer{N}) where N = N
 True if pyrometer `p` is a narrow-band pyrometer (worsk on a fixed wavelengh region)
 """
 is_narrow_band(p::Pyrometer)  = wlength(p) == 2
+"""
+    is_fixed_wavelength(::Pyrometer{N}) where N
+
+True if Pyrometer is single wavelength
+"""
+is_fixed_wavelength(::Pyrometer{N}) where N = N==1
     """
     measure(p::Pyrometer,i::Float64)
 
@@ -110,9 +116,17 @@ function Base.isless(p1::Pyrometer,p2::Pyrometer) # is used to sort the vector o
 
 Returns the length of wavelengths vector covered by the [`DefaultPyrometersTypes`](@ref) (all default pyrometers wavelengh region)
 """
-function wavelength_number()
+function wavelengths_number()
         return mapreduce(x->length(x),+,DefaultPyrometersTypes)
     end
+"""
+    wavelengths_number(p::Vector{Pyrometer})
+
+Returns the total number of wavelength for the vector of pyrometers
+"""
+function wavelengths_number(p::Vector{Pyrometer})
+    return sum(wlength,p)
+end
     """
     full_wavelength_range()
 
@@ -135,9 +149,29 @@ function full_wavelength_range()
         return λ,pyr_names
     end
     """
+    full_wavelength_range()
+
+Creates the wavelengths vector covered by all pyrometers in vector `p`
+"""
+function full_wavelength_range(p::Vector{Pyrometer})
+        #sz = mapreduce(x->length(x),+,DefaultPyrometersTypes)
+        λ = Vector{Float64}(undef,wavelengths_number(p))
+        counter = 0
+        for pj in p
+            if is_narrow_band(pj)
+                counter += 2
+                λ[counter-1] = pj.λ[1]
+            else
+                counter+=1
+            end    
+            λ[counter] = pj.λ[end]
+        end
+        return λ
+    end   
+    """
     produce_pyrometers()
 
-Creates the vector of all supported pyrometers 
+Creates the vector of all default pyrometers 
 """
 function produce_pyrometers()
         pyr_vec = Vector{Pyrometer}()
@@ -184,8 +218,9 @@ function fit_ϵ!(p::Vector{Pyrometer},Treal::Float64,Tmeasured::Vector{Float64})
 """
     fit_ϵ_wavelength!(p::Vector{Pyrometer},Treal::Float64,Tmeasured::Vector{Float64})
 
-The same as [`fit_ϵ!`](@ref) except that returns the vector of fitted emissivities 
-of the length as the total number of wavelength in all pyrometers in `p`
+The same as [`fit_ϵ!`](@ref) except that it returns the vector of fitted emissivities 
+of the same length to the total number of wavelength in all pyrometers in vaector `p`,
+e.g. if p[i] is the narrow-band pyrometer 
 """
 function fit_ϵ_wavelength!(p::Vector{Pyrometer},Treal::Float64,Tmeasured::Vector{Float64})  
         total_wavelength_number =  sum(wlength,p)
