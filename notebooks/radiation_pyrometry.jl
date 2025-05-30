@@ -16,21 +16,8 @@ macro bind(def, element)
     #! format: on
 end
 
-# ╔═╡ 5e712312-0fc7-4205-84cc-834d57b814a3
-begin # need this block because the PlanckFuntions is unregistered
-	notebook_dir = @__DIR__()
-	src_dir = joinpath(abspath(joinpath(notebook_dir,"..")),"src")
-	import Pkg
-	Pkg.activate(notebook_dir)
-	# as far as PlanckFunctions.jl is unregistered package it should be loaded directly from the github repository using julia package manager 
-	Pkg.add(url=raw"https://github.com/Manarom/PlanckFunctions.jl.git")
-	Pkg.add("Revise")
-	Pkg.add(["StaticArrays";"OrderedCollections";"OptimizationOptimJL";"Optimization";"Interpolations";"PrettyTables";"Plots";"LaTeXStrings";"NumericalIntegration"])
-	
-end
-
-# ╔═╡ 7247c8a8-672e-4ea8-9fbb-9e38e7dea4cc
-using PlutoUI,Plots,PrettyTables,Interpolations,DelimitedFiles,Revise,NumericalIntegration,LaTeXStrings
+# ╔═╡ ba23c985-74c4-41f3-8bc4-f7287e30e47f
+using Revise,StaticArrays,OrderedCollections,Optimization,OptimizationOptimJL,PrettyTables,LaTeXStrings,NumericalIntegration,Interpolations,Plots,PlutoUI,DelimitedFiles
 
 # ╔═╡ 15a5265e-61bc-440d-9a7d-ff10773b78d8
 using Main.RadiationPyrometers #this line returns not defined error on the first Pluto run (probably, because of the Pluto running all "using"'s before the cells) just re-run this cell manually
@@ -57,6 +44,23 @@ The last line will launch the Pluto starting page in your default browser
 4) Open this notebook file located at  `project_folder\notebooks\radiation_pyrometry.jl` in `Pluto` by providing the full path to the *"Open a notebook"* text field on `Pluto`'s starting page.
 
 """
+
+# ╔═╡ 5e712312-0fc7-4205-84cc-834d57b814a3
+begin 
+	notebook_dir = @__DIR__()
+	src_dir = joinpath(abspath(joinpath(notebook_dir,"..")),"src")
+end;
+
+# ╔═╡ 940ac947-7604-4d23-9e11-0fb84025dcd3
+# ╠═╡ show_logs = false
+begin # need this block because the PlanckFuntions is unregistered
+import Pkg
+	Pkg.activate(notebook_dir)
+	# as far as PlanckFunctions.jl is unregistered package it should be loaded directly from the github repository using julia package manager 
+	Pkg.add(url=raw"https://github.com/Manarom/PlanckFunctions.jl.git")
+	Pkg.add("Revise")
+	Pkg.add(["StaticArrays";"OrderedCollections";"OptimizationOptimJL";"Optimization";"Interpolations";"PrettyTables";"Plots";"LaTeXStrings";"NumericalIntegration"])
+end 
 
 # ╔═╡ 89a11dcd-b3b5-4349-930d-a66ad74e8fa2
 import PlanckFunctions as Planck
@@ -295,7 +299,13 @@ The following figure shows the spectral emissivity of the blackbody reference, c
 
 # ╔═╡ bc2d93ae-6c30-462c-96e0-30fdb84d7c63
 md"""
-Adjust blackbody reference temperature $(@bind T_reference Slider(bb_calibration_table_data[:,1],show_value=true)) K
+Adjust blackbody reference temperature 
+
+$(@bind T_ref1  Slider(ref_T,show_value=true,default = ref_T[1])) 
+
+$(@bind T_ref2  Slider(ref_T,show_value=true,default = ref_T[1])) 
+
+$(@bind T_ref3  Slider(ref_T,show_value=true,default = ref_T[end])) 
 
 """
 
@@ -303,17 +313,26 @@ Adjust blackbody reference temperature $(@bind T_reference Slider(bb_calibration
 begin 
 	#wavlength = RadiationPyrometers.wlength
 	full_wavelengths_range = RadiationPyrometers.full_wavelength_range(pyrometers_vector)
-	jj = indexin(T_reference,ref_T)[]
-	ej = RadiationPyrometers.fit_ϵ_wavelength!(pyrometers_vector,ref_T[jj],bb_calibration_table_data[jj,2:end])
-	plot(full_wavelengths_range, ej,label=nothing, title="Spectral emissivity for T = $(ref_T[jj])")
+	jj = indexin(T_ref1,ref_T)[]
+	ej = RadiationPyrometers.fit_ϵ_wavelength!(pyrometers_vector,T_ref1,bb_calibration_table_data[jj,2:end])
+	pppp = plot(full_wavelengths_range, ej, title="Spectral emissivity of the blackbody reference",label ="T = $(ref_T[jj])",grid=true)
+	for T_reference in (T_ref2,T_ref3)
+		global jj = indexin(T_reference,ref_T)[]
+		global ej = RadiationPyrometers.fit_ϵ_wavelength!(pyrometers_vector,ref_T[jj],bb_calibration_table_data[jj,2:end])
+		plot!(pppp,full_wavelengths_range, ej, label=" T = $(ref_T[jj])")
+	end
+	xlabel!(pppp,"Wavelength, μm")
+	ylabel!(pppp,"Emissivity")
+	pppp
 end
 
 # ╔═╡ Cell order:
 # ╟─30743a02-c643-4bdc-837e-b97299f9520a
-# ╟─5e712312-0fc7-4205-84cc-834d57b814a3
-# ╟─89a11dcd-b3b5-4349-930d-a66ad74e8fa2
-# ╟─7247c8a8-672e-4ea8-9fbb-9e38e7dea4cc
-# ╟─9cd8fe6d-dcf9-472e-a019-19b4c1a182ed
+# ╠═5e712312-0fc7-4205-84cc-834d57b814a3
+# ╠═940ac947-7604-4d23-9e11-0fb84025dcd3
+# ╠═ba23c985-74c4-41f3-8bc4-f7287e30e47f
+# ╠═89a11dcd-b3b5-4349-930d-a66ad74e8fa2
+# ╠═9cd8fe6d-dcf9-472e-a019-19b4c1a182ed
 # ╟─15a5265e-61bc-440d-9a7d-ff10773b78d8
 # ╟─171409eb-22b5-4bc5-a8e2-eac0932a24f3
 # ╟─d5ee3913-66be-47d7-a755-699ba64b4f98

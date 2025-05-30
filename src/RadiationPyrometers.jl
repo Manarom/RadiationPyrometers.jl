@@ -10,6 +10,10 @@ module RadiationPyrometers
         DefaultPyrometersTypes,
         fit_ϵ!,
         fit_ϵ_wavelength!
+"""
+
+"""
+RadiationPyrometers
     """
     Default pyrometers types 
 
