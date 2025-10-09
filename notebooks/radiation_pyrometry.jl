@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.13
+# v0.20.18
 
 using Markdown
 using InteractiveUtils
@@ -51,17 +51,6 @@ begin
 	src_dir = joinpath(abspath(joinpath(notebook_dir,"..")),"src")
 end;
 
-# ╔═╡ 940ac947-7604-4d23-9e11-0fb84025dcd3
-# ╠═╡ show_logs = false
-#=begin # need this block because the PlanckFuntions is unregistered
-import Pkg
-	Pkg.activate(notebook_dir)
-	# as far as PlanckFunctions.jl is unregistered package it should be loaded directly from the github repository using julia package manager 
-	Pkg.add(url=raw"https://github.com/Manarom/PlanckFunctions.jl.git")
-	Pkg.add("Revise")
-	Pkg.add(["StaticArrays";"OrderedCollections";"OptimizationOptimJL";"Optimization";"Interpolations";"PrettyTables";"Plots";"LaTeXStrings";"NumericalIntegration"])
-end =#
-
 # ╔═╡ 89a11dcd-b3b5-4349-930d-a66ad74e8fa2
 import PlanckFunctions as Planck
 
@@ -75,7 +64,7 @@ PlutoUI.TableOfContents(indent=true, depth=4, aside=true)
 md"""
 ### Introduction
 
-This notebook demonstrates three main examples of using the RadiationPyrometers.jl package. The purpose of this small package is to create a virtual pyrometer that can be used to calculate the emissivity of a real-life pyrometer, enabling the measured temperature to be adjusted to match the actual temperature of the heated object.  
+This notebook demonstrates two examples of using the **RadiationPyrometers.jl** package. The purpose of this small package is to create a virtual pyrometer that can be used to calculate the emissivity of a real-life pyrometer, enabling the measured temperature to be adjusted to match the actual temperature of the heated object.  
 
 """
 
@@ -102,7 +91,7 @@ here  ``\vec{\Omega}`` stays for direction. \
 
 It is interesting that, unlike the blackbody, the real surface thermal emission (in general) depends  on the direction of radiation. Therefore, the most general characteristic for thermal radiation of a real surface is the `directional spectral emissivity`.
 
-In [PlanckFunctions.jl](https://manarom.github.io/PlanckFunctions.jl) module there are several functions to calculate the blackbody thermal emission spectra (and various derivatives, integrals etc.).
+In [PlanckFunctions.jl](https://manarom.github.io/PlanckFunctions.jl) package there are several functions to calculate the blackbody thermal emission spectra (and various derivatives, integrals etc.).
 The following figure show the impact of spectral emissivity on the real surface thermal emission intensity.
 """
 
@@ -187,13 +176,31 @@ As far as the `blackbody` thermal radiation energy strongly depends on temperatu
 The  [RadiationPyrometers.jl](https://manarom.github.io/RadiationPyrometers.jl) package provides several function to work with `virtual` partial radiation pyrometers.
 """
 
+# ╔═╡ b7fac177-c211-4635-992f-e6473be7bdae
+md"""
+Dictionary **RadiationPyrometers.DefaultPyrometersTypes** contains default pyrometers type names together with spectral range. Custom pyrometer can be created by providing its type (name), wavelength or wavelentgh range, working emissivity: 
+``` julia
+# creating custom pyrometer objects
+p_custom = RadiationPyrometers.Pyrometer(type = "Custom",λ = [2.5, 3.7],ϵ=0.65)
+```
+"""
+
 # ╔═╡ e2a9aa39-2490-4681-89d3-a01f058f6feb
 pretty_table(HTML,RadiationPyrometers.DefaultPyrometersTypes,standalone=false,top_left_str="Table of default pyrometers types provied by `RadiationPyrometers.jl` package and corresponding wavelength regions",wrap_table_in_div=true,row_labels=["λₗ","λᵣ" ])
 
 
+# ╔═╡ 02eee968-ff43-4b82-8d68-efede1a220dd
+md"""
+After creating the **Pyrometer** object, it can be used to "measure" the temperature viz convert the intensity of a real surface to its temperature, according to the pyrometer's spectral range using **RadiationPyrometers.measure(pyr,measured_intensity)** function (the intensity should be provided in correct units [W/m²⋅sr⋅μm]). It is quite in practice to know the real temperature of the surface at some point, in this case the emissivity of virtual pyrometer can be adjusted to make the "measured" temperature be equal to the real one. This can be done using 
+```julia
+	RadiationPyrometers.fit_ϵ!(p::Pyrometer,Tmeasured::Float64,Treal::Float64) 
+```
+This function adjusts the emissivity of pyrometer object.
+"""
+
 # ╔═╡ 9b08b767-7e8f-4483-9f2f-226022ce10e4
 md"""
-	It is interesting to look how various pyrometers (with their emissivity set to one) `measure` the temperature of a real surface. The following figure shows the real surface thermal emission intensity and several common pyrometers types working regions. In the legend their `measured` temperature is shown. The `mesured` temperature for each pyrometer type is obtained by fitting the blackbody power to the real surface power both integrated over pyrometer's working spectral range.  
+	If emissivity of partial radiation pyrometer is incorrect,  the measured temperature is also inaccurate. It is interesting to look how various pyrometers (with their emissivity set to one) `measure` the temperature of a real surface. The following figure shows the real surface thermal emission intensity and several common pyrometers types working regions. In the legend their `measured` temperature is shown. The `mesured` temperature for each pyrometer type is obtained by fitting the blackbody power to the real surface power both integrated over pyrometer's working spectral range.  
 	"""
 
 # ╔═╡ 712828a7-fb54-42e6-95fc-233243190f59
@@ -202,7 +209,7 @@ md"Real surface temperature $(@bind T_pyr Slider(range(10,3000,1000),default=150
 # ╔═╡ c69acbf6-94fb-4ac3-8d56-d1f9dda11440
 begin
 	λ_pyr = collect(range(0.1,18,1000))
-	pyrometers_vector = sort(RadiationPyrometers.produce_pyrometers())# returns a vector of all default pyrometers 
+	pyrometers_vector = sort(RadiationPyrometers.produce_pyrometers())# returns a vector of all default pyrometers
 	N = length(pyrometers_vector) + 1
 	# calculationg the real surface thremal radiation spectrum
 	real_i = Planck.ibb.(λ_pyr,T_pyr).*rt_emissivity_interpolation(λ_pyr)
@@ -227,19 +234,18 @@ begin
 		λ_pyr_interp = collect(range(l_cur...,length=30))
 		# calculating the measured by the pyrometer value 
 		measure_intensity =  is_two_wavelength_pyrometer ? NumericalIntegration.integrate(λ_pyr_interp,real_i_interp(λ_pyr_interp)) : real_i_interp(ppp.λ[1])
-		# temperature measured by the current pyrometer
-		measured_temp = round(RadiationPyrometers.measure(ppp,measure_intensity,T_starting= T_pyr))
-		
-		data_legend[j+1] = ppp.type*": T="*string(measured_temp)
-
+		# setting emissivity to one
+		RadiationPyrometers.set_emissivity(ppp,1.0)
+		measured_temp = RadiationPyrometers.measure(ppp,measure_intensity,T_starting = T_pyr)
+		# temperature measured by the current pyrometer 
+		data_legend[j+1] = ppp.type*": T="*string(round(measured_temp))
 		# plotting current pyrometer spectral range
 		region_flag = 
 		plot!(l_cur,[max_val,max_val],fillrange=0, fillalpha=0.5,label=data_legend[j+1])
-
 		# remember the value of temperature with unit emissivity
 		t_em_unity[j] = measured_temp 
 		# calculating the averaged gray-band emissivity
-		ppp.ϵ[] =measure_intensity/(is_two_wavelength_pyrometer ? Planck.band_power(T_pyr,λₗ=l_cur[1],λᵣ=l_cur[2]) : Planck.ibb(ppp.λ[],T_pyr)   )
+		RadiationPyrometers.fit_ϵ!(ppp,measured_temp,T_pyr)
 		# calcaulting the averaged emissivity wthin the pyrometers spectral band (or at fixed wavelength)
 		 t_em_acttual[j] =  round(RadiationPyrometers.measure(ppp,measure_intensity,T_starting= T_pyr))
 		 
@@ -249,11 +255,11 @@ begin
 end
 
 # ╔═╡ f763d449-2a7a-4008-a183-823a774bc25e
-savefig(plot_pyrometers,joinpath(notebook_dir,"Pyrometers.png"));
+#savefig(plot_pyrometers,joinpath(notebook_dir,"Pyrometers.png"));
 
 # ╔═╡ 667f7c30-56e0-461f-b35b-c924007eb9f2
 md"""
-For this particular material the type -`F` pyrometer readings are closer to the real temperature, because of the real surface emissivity being closer to unity for this pyrometer's spectral region. All results are summarized in the following table.
+For this particular material the type -`F` pyrometer readings are closer to the real temperature, because of the real surface emissivity being closer to one for this pyrometer's spectral region. All results are summarized in the following table.
 """
 
 # ╔═╡ 2d12b1a7-9474-44dc-8a39-e13bf451928e
@@ -291,7 +297,7 @@ end
 
 # ╔═╡ 0c9fe7b1-374c-4fb8-9cfe-9337389713bf
 md"""
-The first row in the table represents the reference temperatures, while the subsequent columns show temperatures measured by different pyrometers. Each column is labeled according to the pyrometer type. It should be noted that the temperatures listed in the table vary both with the pyrometer type (across each row) and the temperature values themselves (down each column). This indicates that the spectral emissivity of the reference source depends on both the wavelength (corresponding to the pyrometer type) and the temperature. Since the various pyrometer types collectively cover a broad spectral range from 2 to 14 μm, the measured temperature data can be utilized to determine the spectral emissivity of the reference and its temperature dependence.
+The first row in the table represents the reference temperatures, while the subsequent columns show temperatures measured by different pyrometers. Each column is labeled according to the pyrometer type. It should be noted that the temperatures listed in the table vary both with the pyrometer type (across each row) and the temperature values themselves (down each column). This indicates that the spectral emissivity of the reference source depends on both the wavelength (corresponding to the pyrometer type) and the temperature. Since the various pyrometer types collectively cover a broad spectral range from 2 to 14 μm, the measured temperature data can be utilized to determine the spectral emissivity of the reference and its temperature dependence from the calibrations temperatures table provided above.
 
 The following figure shows the spectral emissivity of the blackbody reference, calculated from the temperature calibration table shown above.
 """
@@ -2220,11 +2226,10 @@ version = "1.8.1+0"
 
 # ╔═╡ Cell order:
 # ╟─30743a02-c643-4bdc-837e-b97299f9520a
-# ╠═5e712312-0fc7-4205-84cc-834d57b814a3
-# ╠═940ac947-7604-4d23-9e11-0fb84025dcd3
-# ╠═ba23c985-74c4-41f3-8bc4-f7287e30e47f
-# ╠═89a11dcd-b3b5-4349-930d-a66ad74e8fa2
-# ╠═9cd8fe6d-dcf9-472e-a019-19b4c1a182ed
+# ╟─5e712312-0fc7-4205-84cc-834d57b814a3
+# ╟─ba23c985-74c4-41f3-8bc4-f7287e30e47f
+# ╟─89a11dcd-b3b5-4349-930d-a66ad74e8fa2
+# ╟─9cd8fe6d-dcf9-472e-a019-19b4c1a182ed
 # ╟─15a5265e-61bc-440d-9a7d-ff10773b78d8
 # ╟─171409eb-22b5-4bc5-a8e2-eac0932a24f3
 # ╟─d5ee3913-66be-47d7-a755-699ba64b4f98
@@ -2236,7 +2241,9 @@ version = "1.8.1+0"
 # ╟─03d76e64-ebf4-432b-b9be-d4cb26275f55
 # ╟─2ad3ec82-54a2-49ac-94ef-579f808dfb1a
 # ╟─8a066ee5-80e9-462f-9a61-15851468aa63
+# ╟─b7fac177-c211-4635-992f-e6473be7bdae
 # ╟─e2a9aa39-2490-4681-89d3-a01f058f6feb
+# ╟─02eee968-ff43-4b82-8d68-efede1a220dd
 # ╟─9b08b767-7e8f-4483-9f2f-226022ce10e4
 # ╟─712828a7-fb54-42e6-95fc-233243190f59
 # ╟─c69acbf6-94fb-4ac3-8d56-d1f9dda11440

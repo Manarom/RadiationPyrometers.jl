@@ -9,4 +9,4 @@ default pyrometers with specified spectral ranges, see the following figure:
   <img src="./notebooks/Pyrometers.png" width="400"/>
 </p>
 It is also possible to create self-configured pyrometer with user-specified spectral range
-Notebook file with `ThermovisorData-test.jl` usage examples are available at [Pluto notebooks](https://github.com/Manarom/RadiationPyrometers.jl/blob/main/notebooks).
+Notebook file with `radiation_pyrometry.jl` usage examples are available at [Pluto notebooks](https://github.com/Manarom/RadiationPyrometers.jl/blob/main/notebooks).

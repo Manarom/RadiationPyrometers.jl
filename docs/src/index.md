@@ -1,7 +1,1 @@
-
-# RadiationPyrometers.jl
-
-## General description
-
-
-
+The purpose of this small package is to create a virtual pyrometer that can be used to calculate the emissivity of a real-life pyrometer, enabling the measured temperature to be adjusted to match the actual temperature of the heated object. 

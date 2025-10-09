@@ -10,10 +10,6 @@ module RadiationPyrometers
         DefaultPyrometersTypes,
         fit_ϵ!,
         fit_ϵ_wavelength!
-"""
-
-"""
-RadiationPyrometers
     """
     Default pyrometers types 
 
@@ -51,12 +47,12 @@ type - pyrometer type, must be member of DefaultPyrometersTypes
             end
         end
         Pyrometer(;type::String,λ::Union{Vector{Float64},Float64},ϵ::Float64) = begin
-            @assert 0<ϵ<=1.0 "Emissivity should be within the (0..1] interval"
+            @assert 0  < ϵ <= 1.0 "Emissivity should be within the (0..1] interval"
             if λ isa Vector
                 N = length(λ)
-                @assert N==1 || N==2 "λ should be a vector of two  Floats or a single Float number"
+                @assert N == 1 || N == 2 "λ should be a vector of two  Floats or a single Float number"
             else
-                N=1
+                N = 1
             end
             new{N}(type,SVector{N}(λ),Ref(ϵ))
         end
@@ -78,7 +74,7 @@ is_narrow_band(p::Pyrometer)  = wlength(p) == 2
 
 True if Pyrometer is single wavelength
 """
-is_fixed_wavelength(::Pyrometer{N}) where N = N==1
+is_fixed_wavelength(::Pyrometer{N}) where N = N == 1
     """
     measure(p::Pyrometer,i::Float64)
 
@@ -244,13 +240,13 @@ function fit_ϵ_wavelength!(p::Vector{Pyrometer},Treal::Float64,Tmeasured::Vecto
     """
     fit_ϵ!(p::Pyrometer,Tmeasured::Float64,Treal::Float64)
 
-    Optimizes the emissivity of the pyrometer to make measured by the pyrometer temperature fit
-    fit the real temperature
+Optimizes the emissivity of the pyrometer to make measured by the pyrometer temperature fit
+fit the real temperature
 
-    Input:
-    p - pyrometer object
-    Treal - real temperature of the surface, Kelvins
-    Tmeasured - temperature measured by the pyrometer, Kelvins
+Input:
+p - pyrometer object
+Treal - real temperature of the surface, Kelvins
+Tmeasured - temperature measured by the pyrometer, Kelvins
 """
 function fit_ϵ!(p::Pyrometer,Tmeasured::Float64,Treal::Float64;optimizer = NelderMead())
         # fits the emssivity of the pyrometer
@@ -279,14 +275,13 @@ function fit_ϵ!(p::Pyrometer,Tmeasured::Float64,Treal::Float64;optimizer = Neld
     """
     fit_ϵ_wavelength!(p::Pyrometer,Tmeasured::Float64,Treal::Float64)
 
-    Fits emissivity and returns it as a vector of the same size as pyrometer's wavelength region
-    Some pyrometers has 2-wavelength, other work on a single wavelength, for two-wavelength pyrometers
-    e_out will be a two-element vector
-    Input:
-        p - pyrometer object
-        Tmeasured - temperature measured by the pyrometer, Kelvins
-        Treal - real temeprature of the surface, Kelvins
-     
+Fits emissivity and returns it as a vector of the same size as pyrometer's wavelength region
+Some pyrometers has 2-wavelength, other work on a single wavelength, for two-wavelength pyrometers
+e_out will be a two-element vector
+Input:
+    p - pyrometer object
+    Tmeasured - temperature measured by the pyrometer, Kelvins
+    Treal - real temeprature of the surface, Kelvins 
 """
 function fit_ϵ_wavelength!(p::Pyrometer,Tmeasured::Float64,Treal::Float64) # this is the same as fit_ϵ! with the exception that 
         # this function returns a vector of values, if pyrometer is single wavelength it returns one -element array
@@ -297,9 +292,9 @@ function fit_ϵ_wavelength!(p::Pyrometer,Tmeasured::Float64,Treal::Float64) # th
     """
     switch_the_type(λ::Float64)
 
-    Returns the type (which can be used as a key of DefaultPyrometersTypes dict) depending on the wavelengh
-    Input:
-        λ - wavelength in μm
+Returns the type (which can be used as a key of DefaultPyrometersTypes dict) depending on the wavelengh
+Input:
+    λ - wavelength in μm
 """
 function switch_the_type(λ::Float64)
         for (k,λp) in DefaultPyrometersTypes
