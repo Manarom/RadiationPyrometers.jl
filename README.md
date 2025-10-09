@@ -1,7 +1,7 @@
 # RadiationPyrometers
 
 [![Build Status](https://github.com/Manarom/RadiationPyrometers.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Manarom/RadiationPyrometers.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://manarom.github.io/ThermovisorData.jl)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://manarom.github.io/RadiationPyrometers.jl)
 
 The purpose of this small package is to create a virtual pyrometer that can be used to calculate the emissivity of a real-life pyrometer, enabling the measured temperature to be adjusted to match the actual temperature of the heated object. There are several 
 default pyrometers with specified spectral ranges, see the following figure:
