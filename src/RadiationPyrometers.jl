@@ -309,9 +309,9 @@ function switch_the_type(λ::Float64)
 
     function Base.show(io::IO, p::Pyrometer{N}) where N 
         if N==2
-            print(io, "Narrow-band pyrometer:λ ∈ $(p.λ[1]) ... $(p.λ[1]) μm,ϵ = $(p.ϵ[])")
+            print(io, "$(p.type) -type: Narrow-band pyrometer:λ ∈ $(p.λ[1]) ... $(p.λ[2]) μm,ϵ = $(p.ϵ[])")
         elseif N==1
-            print(io, "Fixed-wavelength pyrometer:λ = $(p.λ[1]) μm,ϵ = $(p.ϵ[])")
+            print(io, "$(p.type) -type: Fixed-wavelength pyrometer:λ = $(p.λ[1]) μm,ϵ = $(p.ϵ[])")
         else
             print(io,p)
         end
