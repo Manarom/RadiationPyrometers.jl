@@ -17,24 +17,18 @@ macro bind(def, element)
 end
 
 # ╔═╡ ba23c985-74c4-41f3-8bc4-f7287e30e47f
-using Revise,StaticArrays,OrderedCollections,Optimization,OptimizationOptimJL,LaTeXStrings,NumericalIntegration,Interpolations,Plots,PlutoUI,DelimitedFiles , ForwardDiff
-
-# ╔═╡ 73648cc6-a833-4ed1-bd6f-741315e34763
-using PlutoPlotly
-
-# ╔═╡ 0c63ac2d-8ca5-4bac-be5b-04d396de529c
-using PrettyTables
+using Revise,StaticArrays,OrderedCollections,Optimization,OptimizationOptimJL,LaTeXStrings,NumericalIntegration,Interpolations,Plots,PlutoUI,DelimitedFiles , ForwardDiff , PlutoPlotly , PrettyTables
 
 # ╔═╡ 15a5265e-61bc-440d-9a7d-ff10773b78d8
 using Main.RadiationPyrometers #this line returns not defined error on the first Pluto run (probably, because of the Pluto running all "using"'s before the cells) just re-run this cell manually
 
 # ╔═╡ 30743a02-c643-4bdc-837e-b97299f9520a
 md"""
-#  `RadiationPyrometry.jl` package usage  
+#  `RadiationPyrometry.jl`   
 
-##### Package **`RadiationPyrometry.jl`** contains methods for virtual radiation pyrometers of different types. 
+######  **`RadiationPyrometry.jl`** содержит набор методов и типов для воздания виртуальных пирометров. Виртуальный пирометр может "измерять" температуру по загружаемой интенсивности излучения, а также подстраивать излучательную способность пирометра под заданную "измеренную" температуру.
 ____________________
-### Installation
+## Установка пакета
 
 To run this notebook, you need:
 1) Install `julia` language itself from its official [download page](https://julialang.org/downloads) 
@@ -66,39 +60,46 @@ includet(joinpath(src_dir,"RadiationPyrometers.jl"))
 # ╔═╡ 171409eb-22b5-4bc5-a8e2-eac0932a24f3
 PlutoUI.TableOfContents(indent=true, depth=4, aside=true)
 
+# ╔═╡ 04f9f75e-34cc-4921-971e-6958ed960518
+begin 
+	plot_common_args = (grid = true, gridlinewidth=3, gridstyle = :dot,minorgrid=true, box = :on, linewidth = 3)
+	data_folder = joinpath(notebook_dir , "data")
+	data_names = readdir(data_folder)
+end;
+
 # ╔═╡ d5ee3913-66be-47d7-a755-699ba64b4f98
 md"""
-### Introduction
+## Введение
 
-This notebook demonstrates two examples of using the **RadiationPyrometers.jl** package. The purpose of this small package is to create a virtual pyrometer that can be used to calculate the emissivity of a real-life pyrometer, enabling the measured temperature to be adjusted to match the actual temperature of the heated object.  
+Этот ноутбук содержит три примера использования пакета **RadiationPyrometers.jl**. Цель этого небольшого пакета — создание виртуального пирометра, который можно использовать для расчета коэффициента излучения реального прибора. Это позволяет корректировать измеренную температуру так, чтобы она соответствовала фактической температуре нагретого объекта.
 
 """
 
 # ╔═╡ d442014a-20e6-4be4-ac7f-f13de329dec5
 md"""
-### I. `Blackbody` vs `real surface` thermal emission 
+## I. Тепловое излучение: `абсолютно черного тела` и `реальной поверхности` 
 _______________________
 
-All heated bodies emit thermal radiation. According to Planck's law, the spectrum of ideal emitter (called the *blackbody*) is governed solaly by its temperature. The blackbody spectral intensity can be calculated as follows \
+Все нагретые тела испускают тепловое излучение. Согласно закону Планка, спектр идеального излучателя (называемого *абсолютно черным телом*) определяется исключительно его температурой. Спектральная интенсивность излучения абсолютно черного тела рассчитывается следующим образом: \
 
 
 ``I_{blackbody}(\lambda , T) =  \frac{C_1}{\lambda ^5} \cdot \frac{1}{e^{\frac{C_2}{\lambda T } } - 1}``, \
 
 
-where ``C_1`` = $(Planck.C₁), ``W \cdot μm/m² \cdot sr`` and ``C_2`` = $(Planck.C₂), ``μm \cdot K`` , ``\lambda`` - wavelength in ``\mu m``, ``T`` - temperature in Kelvins
+где ``C_1`` = $(Planck.C₁), ``Вт \cdot мкм/м² \cdot ср`` и ``C_2`` = $(Planck.C₂), ``мкм \cdot К``, ``\lambda`` — длина волны в ``мкм``, ``T`` — температура в Кельвинах.
 
-A real surface thermal emission intensity is lower than the one of the blackbody. The fraction of blackbody thermal radiation intensity emitted by a real surface is characterized by directional spectral emissivity ``\epsilon (\lambda, T,\vec{\Omega})``:
+Интенсивность теплового излучения реальной поверхности ниже, чем у абсолютно черного тела. Доля интенсивности излучения, испускаемого реальной поверхностью по сравнению с абсолютно черным телом, характеризуется спектральной направленной степенью черноты ``\epsilon (\lambda, T,\vec{\Omega})``:
 
 ``I_{real\ \ surface}(\lambda , T, \vec{\Omega} ) = \epsilon (\lambda, T,\vec{\Omega}) \cdot  I_{blackbody}(\lambda , T)``, \
 
 
-here  ``\vec{\Omega}`` stays for direction. \
+здесь ``\vec{\Omega}`` обозначает направление. \
 
 
-It is interesting that, unlike the blackbody, the real surface thermal emission (in general) depends  on the direction of radiation. Therefore, the most general characteristic for thermal radiation of a real surface is the `directional spectral emissivity`.
+Интересно, что, в отличие от абсолютно черного тела, тепловое излучение реальной поверхности (в общем случае) зависит от направления излучения. Таким образом, наиболее общей характеристикой теплового излучения реальной поверхности является именно `спектральная направленная степень черноты`.
 
-In [PlanckFunctions.jl](https://manarom.github.io/PlanckFunctions.jl) package there are several functions to calculate the blackbody thermal emission spectra (and various derivatives, integrals etc.).
-The following figure show the impact of spectral emissivity on the real surface thermal emission intensity.
+В пакете [PlanckFunctions.jl](https://manarom.github.io/PlanckFunctions.jl) содержится ряд функций для расчета спектров теплового излучения абсолютно черного тела (а также различных производных, интегралов и т.д.).
+На следующем графике показано влияние спектральной степени черноты на интенсивность теплового излучения реальной поверхности.
 """
 
 # ╔═╡ 27b3c586-9eb0-4a51-b9ca-a9c0379fccdf
@@ -127,6 +128,9 @@ end
 	"""
 end
 
+# ╔═╡ 72095f49-f6c0-41a8-be2f-323a0bacfc51
+md""" Материал поверхности: $(@bind material_selection Select(data_names , default = "zrb2.txt"))"""
+
 # ╔═╡ 7cc110e9-7655-4dfc-b1e0-ab3905866425
 @bind  scales_BB PlutoUI.combine() do Child
 	md"""
@@ -139,96 +143,6 @@ end
 	)   
 	"""
 end
-
-# ╔═╡ 8a066ee5-80e9-462f-9a61-15851468aa63
-md"""
-### II. Partial radiation pyrometry
-_______________________
-
-As far as the `blackbody` thermal radiation energy strongly depends on temperature, this quantity can be used to measure the temperature of a real surface. This is the general idea of partial radiation pyrometry: **measure intensity to get the temperature**. As far as the intensity is a directional quantity, a pyrometer needs collimating optics (a telescope).The real surfaces emissivity often varies sufficiently with the wavelength, at the same time, partial radiation pyrometers assume constant emissivity (so-called `grey`-band approximation). Thus, for industrial purposes, it is useful to have several pyrometers, each working within a relatively narrow spectral band. In the spectral range of a partial radiation pyrometer, emissivity should not vary significantly to make the assumption of constant emissivity relevant.
-
-The  [RadiationPyrometers.jl](https://manarom.github.io/RadiationPyrometers.jl) package provides several function to work with `virtual` partial radiation pyrometers.
-"""
-
-# ╔═╡ b7fac177-c211-4635-992f-e6473be7bdae
-md"""
-Dictionary **RadiationPyrometers.DefaultPyrometersTypes** contains default pyrometers type names together with spectral range. Custom pyrometer can be created by providing its type (name), wavelength or wavelentgh range, working emissivity: 
-``` julia
-# creating custom pyrometer objects
-p_custom = RadiationPyrometers.Pyrometer(type = "Custom",λ = [2.5, 3.7],ϵ=0.65)
-```
-"""
-
-# ╔═╡ e2a9aa39-2490-4681-89d3-a01f058f6feb
-pretty_table(HTML,RadiationPyrometers.DefaultPyrometersTypes,top_left_string ="Table of default pyrometers types provied by `RadiationPyrometers.jl` package and corresponding wavelength regions",wrap_table_in_div=true)
-
-
-# ╔═╡ 02eee968-ff43-4b82-8d68-efede1a220dd
-md"""
-After creating the **Pyrometer** object, it can be used to "measure" the temperature viz convert the intensity of a real surface to its temperature, according to the pyrometer's spectral range using **RadiationPyrometers.measure(pyr,measured_intensity)** function (the intensity should be provided in correct units [W/m²⋅sr⋅μm]). It is quite in practice to know the real temperature of the surface at some point, in this case the emissivity of virtual pyrometer can be adjusted to make the "measured" temperature be equal to the real one. This can be done using 
-```julia
-	RadiationPyrometers.fit_ϵ!(p::Pyrometer,Tmeasured::Float64,Treal::Float64) 
-```
-This function adjusts the emissivity of pyrometer object.
-"""
-
-# ╔═╡ 9b08b767-7e8f-4483-9f2f-226022ce10e4
-md"""
-	If emissivity of partial radiation pyrometer is incorrect,  the measured temperature is also inaccurate. It is interesting to look how various pyrometers (with their emissivity set to one) `measure` the temperature of a real surface. The following figure shows the real surface thermal emission intensity and several common pyrometers types working regions. In the legend their `measured` temperature is shown. The `mesured` temperature for each pyrometer type is obtained by fitting the blackbody power to the real surface power both integrated over pyrometer's working spectral range.  
-	"""
-
-# ╔═╡ 712828a7-fb54-42e6-95fc-233243190f59
-md"Real surface temperature $(@bind T_pyr Slider(range(10,3000,1000),default=1500,show_value=true) ) "
-
-# ╔═╡ f763d449-2a7a-4008-a183-823a774bc25e
-#savefig(plot_pyrometers,joinpath(notebook_dir,"Pyrometers.png"));
-
-# ╔═╡ 667f7c30-56e0-461f-b35b-c924007eb9f2
-md"""
-For this particular material the type -`F` pyrometer readings are closer to the real temperature, because of the real surface emissivity being closer to one for this pyrometer's spectral region. All results are summarized in the following table.
-"""
-
-# ╔═╡ d08ec8f2-7689-4043-9f28-da06ab0124b9
-md"""
-### III. Blackbody reference source emissivity
-_______________________
-
-A real-life pyrometer does not directly measure radiation intensity due to the spectral dependence of its sensitivity and various other factors; therefore, it requires calibration. To calibrate the pyrometer, it is placed in front of a reference source that closely approximates blackbody thermal emission. Typically, this blackbody reference is a specially designed furnace with a heated cavity and a precise temperature controller.
-
-During the calibration process, the pyrometer operator measures the temperature of the reference source. Ideally, the measured temperature should match the temperature set on the reference controller; however, in practice, these values rarely coincide exactly. This discrepancy arises from the non-ideal nature of the reference source. The spectral emissivity of a real reference is not exactly equal to one and varies with both wavelength and temperature. To account for this deviation, the reference source is supplied along with a calibration table, which looks like the following:
-
-"""
-
-# ╔═╡ 0c9fe7b1-374c-4fb8-9cfe-9337389713bf
-md"""
-The first row in the table represents the reference temperatures, while the subsequent columns show temperatures measured by different pyrometers. Each column is labeled according to the pyrometer type. It should be noted that the temperatures listed in the table vary both with the pyrometer type (across each row) and the temperature values themselves (down each column). This indicates that the spectral emissivity of the reference source depends on both the wavelength (corresponding to the pyrometer type) and the temperature. Since the various pyrometer types collectively cover a broad spectral range from 2 to 14 μm, the measured temperature data can be utilized to determine the spectral emissivity of the reference and its temperature dependence from the calibrations temperatures table provided above.
-
-The following figure shows the spectral emissivity of the blackbody reference, calculated from the temperature calibration table shown above.
-"""
-
-
-# ╔═╡ 72947d97-0a97-4064-a2fe-08d19dec0f0e
-md"""
- ### IV Two temperature emission
-"""
-
-# ╔═╡ 9ce196c1-8915-46da-9aba-f13d7655959a
-md"""
- 	Now the emission is proportional to the spectral intensity of two mixed BB sources with different temperatures.
-
-``I_{meas} = \epsilon\mathcal{b}(\lambda , T_1) + (1 - \epsilon)\mathcal{b}(\lambda , T_2)``
-
-Check is it is possible to measure the surface temperature in a presence of external emission with much higher temperature
-"""
-
-# ╔═╡ 3581aa29-714b-422a-8feb-d1a0c3ebeec7
-begin 
-	data_folder = joinpath(notebook_dir , "data")
-	data_names = readdir(data_folder)
-end;
-
-# ╔═╡ b9bee300-59a4-4c7a-b525-439f5c62253e
-md""" Select material: $(@bind material_selection Select(data_names , default = "zrb2.txt"))"""
 
 # ╔═╡ 2ad3ec82-54a2-49ac-94ef-579f808dfb1a
 begin 
@@ -243,13 +157,13 @@ begin
 	λ_bb = collect(range(λ_BB...,length=500));
 	ibb1 = Planck.ibb.(λ_bb,T₁ );ibb2 =  Planck.ibb.(λ_bb,T₂)
 	
-	p_bb = Plots.plot(λ_bb,ibb1,label="blackbody T=$(T₁),K", xscale=scales_BB[1],yscale =scales_BB[2],fillrange=0, fillalpha=0.3)
+	p_bb = Plots.plot(λ_bb,ibb1,label="blackbody T=$(T₁),K", xscale=scales_BB[1],yscale =scales_BB[2],fillrange=0, fillalpha=0.3; plot_common_args...)
 	
 	plot!(λ_bb,ibb2,label="blackbody T=$(T₂),K", xscale=scales_BB[1],yscale =scales_BB[2],fillrange=0, fillalpha=0.3)
 	
-	Plots.plot!(λ_bb,ibb1.*rt_emissivity_interpolation(λ_bb),label="real surface T=$(T₁),K", xscale=scales_BB[1],yscale =scales_BB[2],fillrange=0, fillalpha=0.2)	
+	Plots.plot!(λ_bb,ibb1.*rt_emissivity_interpolation(λ_bb),label="real surface T=$(T₁),K", xscale=scales_BB[1],yscale =scales_BB[2],fillrange=0, fillalpha=0.2; plot_common_args...)	
 	
-	Plots.plot!(λ_bb,ibb2.*rt_emissivity_interpolation(λ_bb),label="real surface T=$(T₂),K", xscale=scales_BB[1],yscale =scales_BB[2],fillrange=0, fillalpha=0.2)
+	Plots.plot!(λ_bb,ibb2.*rt_emissivity_interpolation(λ_bb),label="real surface T=$(T₂),K", xscale=scales_BB[1],yscale =scales_BB[2],fillrange=0, fillalpha=0.2; plot_common_args...)
 	xlabel!("Wavelength, μm")
 	ylabel!("Spectral intensity, W/m²⋅sr⋅μm")
 end
@@ -257,10 +171,59 @@ end
 # ╔═╡ 03d76e64-ebf4-432b-b9be-d4cb26275f55
 begin 
 	e_real_BB = rt_emissivity_interpolation(λ_bb) # this spectral emissivity was measured up to 18 μm, thus for higher wavelengths it uses flat extrapolation
-	Plots.plot(λ_bb, e_real_BB, label=nothing, linewidth=3.0)
-	title!("Real (experimental) surface spectral emissivity")
+	Plots.plot(λ_bb, e_real_BB, label=nothing, linewidth=3.0; plot_common_args...)
+	title!("Surface spectral emissivity of $(material_selection)")
 	xlabel!("Wavelength, μm");ylabel!("Spectral emissivity (ϵ)")
 end
+
+# ╔═╡ 8a066ee5-80e9-462f-9a61-15851468aa63
+md"""
+## II. Пирометрия частичного излучения
+_______________________
+
+Поскольку энергия теплового излучения `абсолютно черного тела` сильно зависит от температуры, эту величину можно использовать для измерения температуры реальной поверхности. В этом заключается основная идея пирометрии частичного излучения: **измерить интенсивность, чтобы получить температуру**. Так как интенсивность является величиной направленной, пирометру требуется коллимирующая оптика (телескоп). Степень черноты реальных поверхностей часто существенно меняется в зависимости от длины волны; в то же время пирометры частичного излучения предполагают постоянную степень черноты (так называемое «серое» приближение в полосе пропускания). Таким образом, для промышленных целей полезно иметь несколько пирометров, каждый из которых работает в относительно узком спектральном диапазоне. В спектральном диапазоне пирометра частичного излучения степень черноты не должна значительно изменяться, чтобы допущение о её постоянстве оставалось актуальным.
+
+Пакет [RadiationPyrometers.jl](https://manarom.github.io/RadiationPyrometers.jl) предоставляет ряд функций для работы с `виртуальными` пирометрами частичного излучения.
+
+"""
+
+# ╔═╡ b7fac177-c211-4635-992f-e6473be7bdae
+md"""
+Словарь **RadiationPyrometers.DefaultPyrometersTypes** содержит названия стандартных типов пирометров вместе с их спектральными диапазонами. Пользовательский пирометр можно создать, указав его тип (имя), длину волны или спектральный диапазон, а также рабочую степень черноты:
+
+```julia
+# создание пользовательских объектов-пирометров
+p_custom = RadiationPyrometers.Pyrometer(type = "Custom", λ = [2.5, 3.7], ϵ = 0.65)
+```
+"""
+
+# ╔═╡ 69f9052b-d925-49fb-8eb9-089671e64339
+md" ### II.I Типовые пирометры частичного излучения "
+
+# ╔═╡ e2a9aa39-2490-4681-89d3-a01f058f6feb
+pretty_table(HTML,RadiationPyrometers.DefaultPyrometersTypes,top_left_string ="Таблица типовых пирометров в пакете `RadiationPyrometers.jl` и соотвествующие диапазоны длин волн", wrap_table_in_div=true)
+
+
+# ╔═╡ 02eee968-ff43-4b82-8d68-efede1a220dd
+md"""
+После создания объекта **Pyrometer** его можно использовать для «измерения» температуры, а именно — для преобразования интенсивности излучения реальной поверхности в значение температуры в соответствии со спектральным диапазоном прибора. Это делается с помощью функции **RadiationPyrometers.measure(pyr, measured_intensity)** (интенсивность должна быть указана в соответствующих единицах [Вт/м²⋅ср⋅мкм]). На практике часто бывает известна истинная температура поверхности в какой-то момент; в этом случае степень черноты виртуального пирометра можно скорректировать так, чтобы «измеренная» температура совпала с реальной. Это можно сделать с помощью функции:
+
+```julia
+RadiationPyrometers.fit_ϵ!(p::Pyrometer, Tmeasured::Float64, Treal::Float64) 
+```
+
+"""
+
+# ╔═╡ 6c2d1616-4992-4123-a356-0545cf81ce08
+md" ### II.II Измерение пирометром без задания излучательной способности "
+
+# ╔═╡ 9b08b767-7e8f-4483-9f2f-226022ce10e4
+md"""
+Если излучательная способность пирометра частичного излучения задана неверно, измеренная температура также будет неточной. Интересно посмотреть, как различные пирометры (с установленной единичной степенью черноты) «измеряют» температуру реальной поверхности. На следующем графике показана интенсивность теплового излучения реальной поверхности и рабочие диапазоны нескольких распространенных типов пирометров. В легенде указана их «измеренная» температура. Значение «измеренной» температуры для каждого типа пирометра получено путем сопоставления мощности излучения абсолютно черного тела с мощностью излучения реальной поверхности, проинтегрированных в пределах рабочего спектрального диапазона прибора.
+"""
+
+# ╔═╡ 712828a7-fb54-42e6-95fc-233243190f59
+md"Real surface temperature $(@bind T_pyr Slider(range(10,3000,1000),default=1500,show_value=true) ) "
 
 # ╔═╡ c69acbf6-94fb-4ac3-8d56-d1f9dda11440
 begin
@@ -273,7 +236,7 @@ begin
 	data_legend = Matrix{String}(undef,N,1)
 	data_legend[1] = "$(L"T_{real}") =$(round(T_pyr))"
 	# poltting surface thremal emission spectrum
-	plot_pyrometers = Plots.plot(λ_pyr,real_i,xscale=scales_BB[1],yscale =scales_BB[2],fillrange=0, fillalpha=0.3,dpi=600,label = data_legend[1],legend_background_color=:white,legend_foreground_color = :black,legend_position=:right)
+	plot_pyrometers = Plots.plot(λ_pyr,real_i,xscale=scales_BB[1],yscale =scales_BB[2],fillrange=0, fillalpha=0.3,dpi=600,label = data_legend[1],legend_background_color=:white,legend_foreground_color = :black,legend_position=:right; plot_common_args...)
 
 	real_i_interp = linear_interpolation(λ_pyr,real_i)
 	xlabel!("Wavelength , μm")
@@ -298,7 +261,7 @@ begin
 		data_legend[j+1] = ppp.type*": T="*string(round(measured_temp))
 		# plotting current pyrometer spectral range
 		region_flag = 
-		plot!(l_cur,[max_val,max_val],fillrange=0, fillalpha=0.5,label=data_legend[j+1])
+		plot!(l_cur,[max_val,max_val],fillrange=0, fillalpha=0.5,label=data_legend[j+1]; plot_common_args...)
 		# remember the value of temperature with unit emissivity
 		t_em_unity[j] = measured_temp 
 		# calculating the averaged gray-band emissivity
@@ -307,7 +270,7 @@ begin
 		 t_em_acttual[j] =  round(RadiationPyrometers.measure(ppp,measure_intensity,T_starting= T_pyr))
 		 
 	end
-	plot!(twinx(),λ_pyr,rt_emissivity_interpolation(λ_pyr),linewidth=4,linecolor=:red,label=nothing,alpha=0.3,ylabel ="Real surface spectral emissivity" )
+	plot!(twinx(),λ_pyr,rt_emissivity_interpolation(λ_pyr),linewidth=4,linecolor=:red,label=nothing,alpha=0.3,ylabel ="Real surface spectral emissivity"; plot_common_args... )
 	
 	
 	# emissivities table 
@@ -319,11 +282,34 @@ begin
 
 end;
 
-# ╔═╡ a861d56f-f6c9-4754-b7a9-ed63713f1f2f
-	pyr_table = pretty_table(HTML,data, column_labels= ["type","λ region,μm","T₀ (ϵ=1),K","grey-ϵ", "T₁ (grey-ϵ),K"],top_left_string ="Table of temperatures `measured` by different pyrometers  with the spectral emissivity settled to one (T₀) and to the calculated grey-ϵ and temperature measured after setting gray band emissivity to the right value (T₁) the real temperature is Tᵣ=$(T_pyr)" )
-
 # ╔═╡ 7071a6f4-e296-4e53-8e6f-24f1f038c1a5
 plot_pyrometers
+
+# ╔═╡ f763d449-2a7a-4008-a183-823a774bc25e
+#savefig(plot_pyrometers,joinpath(notebook_dir,"Pyrometers.png"));
+
+# ╔═╡ 667f7c30-56e0-461f-b35b-c924007eb9f2
+md"""
+Для данного конкретного материала показания пирометра типа **F** наиболее близки к реальной температуре, так как степень черноты реальной поверхности в спектральном диапазоне этого прибора ближе к единице. Все результаты сведены в следующую таблицу.
+"""
+
+# ╔═╡ a861d56f-f6c9-4754-b7a9-ed63713f1f2f
+	pyr_table = pretty_table(HTML,data, column_labels= ["type","λ region,μm","T₀ (ϵ=1),K","grey-ϵ", "T₁ (grey-ϵ),K"],top_left_string ="Таблица температур, `измеренных` различными пирометрами при излучательной способности заданной равной единице (T₀), рассчитанная излучательная способность, которая должна быть задана на пирометре (grey-ϵ) и показания пирометра после задания этой излучательной способности (T₁), истинная температура поверхности Tᵣ=$(T_pyr)" , wrap_table_in_div=true)
+
+# ╔═╡ d08ec8f2-7689-4043-9f28-da06ab0124b9
+md"""
+## III. Излучательная способность эталонного источника абсолютно черного тела
+_______________________
+
+Реальный пирометр не измеряет интенсивность излучения напрямую из-за спектральной зависимости его чувствительности и множества других факторов; поэтому он требует калибровки. Чтобы откалибровать пирометр, его помещают перед эталонным источником, тепловое излучение которого максимально приближено к излучению абсолютно черного тела. Обычно таким эталоном служит специально сконструированная печь с нагреваемой полостью и точным контроллером температуры.
+
+В процессе калибровки оператор пирометра измеряет температуру эталонного источника. В идеале измеренная температура должна совпадать с температурой, установленной на контроллере эталона, однако на практике эти значения редко совпадают точно. Это расхождение возникает из-за неидеальной природы эталонного источника. Спектральная излучательная способность реального эталона не равна единице и варьируется в зависимости как от длины волны, так и от температуры. Чтобы учесть это отклонение, источник поставляется вместе с калибровочной таблицей, которая выглядит следующим образом:
+
+
+"""
+
+# ╔═╡ 3ddc9d4e-ff96-4173-899b-3eae0facb830
+md" ### - Калибровочная таблица эталонного излучателя "
 
 # ╔═╡ c5ac80ee-8143-4c28-bbff-2ac761c71fac
 begin
@@ -331,15 +317,26 @@ begin
 	table_header =["Tref";]
 	all_types = [getfield(p,:type) for p in pyrometers_vector]
 	table_header = vcat(table_header,all_types)
-	pr_tbl = pretty_table(HTML,bb_calibration_table_data,column_labels= table_header,top_left_string = "Example of table data for the blackbody reference source (all tempeatures are in Celsius)")
+	pr_tbl = pretty_table(HTML,bb_calibration_table_data,column_labels= table_header,top_left_string = "Пример калибровочной таблицы для эталона АЧТ (все температуры  - в градусах Цельсия)",  wrap_table_in_div=true)
 	bb_calibration_table_data .+= Planck.Tₖ # converting table data to 
 	ref_T = @view bb_calibration_table_data[:,1] # reference source temperature
 	pr_tbl
 end
 
+# ╔═╡ 0c9fe7b1-374c-4fb8-9cfe-9337389713bf
+md"""
+### - Определение спектра излучательной способности по таблице калибровочных температур
+
+Первая строка в таблице представляет температуры эталона, в то время как последующие столбцы показывают температуры, измеренные различными пирометрами. Каждый столбец помечен в соответствии с типом пирометра. Следует отметить, что значения температур в таблице меняются как в зависимости от типа пирометра (в каждой строке), так и от самих значений температуры (в каждом столбце). Это указывает на то, что спектральная излучательная способность эталонного источника зависит как от длины волны (соответствующей типу пирометра), так и от температуры. Поскольку различные типы пирометров в совокупности охватывают широкий спектральный диапазон от 2 до 14 мкм, данные измеренных температур могут быть использованы для определения спектральной излучательной способности эталона и её температурной зависимости на основе приведенной выше таблицы калибровки. Для этого излучательная способность пирометра подбирается таким образом, чтобы показываемая им температура в точности соотвествовала температуре АЧТ.
+
+На следующем рисунке показана спектральная излучательная способность эталона абсолютно черного тела, рассчитанная по данным таблицы калибровки температуры.
+
+"""
+
+
 # ╔═╡ bc2d93ae-6c30-462c-96e0-30fdb84d7c63
 md"""
-Adjust blackbody reference temperature 
+Три температуры АЧТ: 
 
 $(@bind T_ref1  Slider(ref_T,show_value=true,default = ref_T[1])) 
 
@@ -355,28 +352,65 @@ begin
 	full_wavelengths_range = RadiationPyrometers.full_wavelength_range(pyrometers_vector)
 	jj = indexin(T_ref1,ref_T)[]
 	ej = RadiationPyrometers.fit_ϵ_wavelength!(pyrometers_vector,T_ref1,bb_calibration_table_data[jj,2:end])
-	pppp = Plots.plot(full_wavelengths_range, ej, title="Spectral emissivity of the blackbody reference",label ="T = $(ref_T[jj])",grid=true)
+	pppp = Plots.plot(full_wavelengths_range, ej, title="Spectral emissivity of the blackbody reference",label ="T = $(ref_T[jj]) , K",grid=true; plot_common_args...)
 	for T_reference in (T_ref2,T_ref3)
 		global jj = indexin(T_reference,ref_T)[]
 		global ej = RadiationPyrometers.fit_ϵ_wavelength!(pyrometers_vector,ref_T[jj],bb_calibration_table_data[jj,2:end])
-		Plots.plot!(pppp,full_wavelengths_range, ej, label=" T = $(ref_T[jj])")
+		Plots.plot!(pppp,full_wavelengths_range, ej, label=" T = $(ref_T[jj]) , K"; plot_common_args...)
 	end
 	xlabel!(pppp,"Wavelength, μm")
 	ylabel!(pppp,"Emissivity")
 	pppp
 end
 
-# ╔═╡ 86af6afc-b28a-4e84-952a-bd29710374f8
-λ2 = collect(range(0.1,15.0,1000));
-
-# ╔═╡ f181980f-bf72-4468-8daa-9461c6c901e0
+# ╔═╡ 6aa82819-6f5a-43af-ac03-4775fce51564
 md"""
-Select the material (or fixed emissivity) : $(@bind  emissivity_type Select(vcat(["fixed"] , data_names), default = "fixed"))
+Из рисунка выше видно, что излучательная способность эталона изменяется с температурой слабо и наиболее близка к единице в области блин волн меньше `3` и больше `7` μm  
+"""
+
+# ╔═╡ 72947d97-0a97-4064-a2fe-08d19dec0f0e
+md"""
+ ## IV Измерение температуры поверхности при наличии "паразитной" засветки
+"""
+
+# ╔═╡ 854f8c06-aac6-464f-899c-41ca706b259a
+md"""
+
+На практике возникают ситуации, когда необходимо производить измерения температуры поверхности в условиях внешней застветки. Например, это может быть актуально при нагреве поверхности высокоинтенсивным источником излучения. При этом спектры теплового излучения источника и поверхности объекта могут быть существенно разнесены по оси абсцисс.
 
 """
 
+# ╔═╡ 9ce196c1-8915-46da-9aba-f13d7655959a
+md"""
+ Теперь излучение пропорционально спектральной интенсивности двух источников абсолютно черного тела (АЧТ) с разными температурами. Излучение паразитного источника отражается от поверхности образца с коэффициентом отражения **``\rho = 1 - \epsilon``** и попадает в пирометр.  Предполагается, что паразитное излучение напрямую в пирометр не попадает. 
+
+Таким образом, интенсивность регистрируемая пирометром может быть выражена следующей формулой:
+
+``I_{meas} = \epsilon(λ)\mathcal{b}(\lambda , T_1) + (1 - \epsilon(λ))\mathcal{b}(\lambda , T_2)``
+
+Здесь, ``\epsilon(λ)`` - это излучательная способность поверхности 
+
+"""
+
+# ╔═╡ 86af6afc-b28a-4e84-952a-bd29710374f8
+λ2 = collect(range(0.1,25.0,1000));
+
+# ╔═╡ f181980f-bf72-4468-8daa-9461c6c901e0
+md"""
+Можно выбрать различные излучательные способноти : $(@bind  emissivity_type Select(vcat(["fixed"] , data_names), default = "fixed"))
+
+"""
+
+# ╔═╡ 620dce38-97ce-495f-9b23-1b8290cbd973
+begin 
+	to_names = Dict(data_names[1] => "Cr2O3" ,data_names[2] => "кварцевая керамика" ,data_names[3] => "РСНК"   , data_names[4] => "ZrB2")
+end;
+
+# ╔═╡ 8cef05a1-2974-4c38-b73e-fa706f347fcc
+md" Show wavelength range: $(@bind λ_show RangeSlider(range(extrema(λ2)... , 1000)))"
+
 # ╔═╡ 36ba2396-bb5e-4d22-a58e-9ab27cd18b2d
-md" Sample emissivity , ϵ = $(@bind ϵ_fixed  Slider(1e-4:1e-4:1.0 , show_value = true , default = 0.5))"
+md" Излучательная способность поверхности , ϵ = $(@bind ϵ_fixed  Slider(1e-4:1e-4:1.0 , show_value = true , default = 0.5))"
 
 # ╔═╡ efc35420-d0e6-4795-94b6-d43289b4de44
 begin 
@@ -385,9 +419,6 @@ begin
 		eint = Returns(ϵ_fixed)
 	else
 		_data = readdlm(joinpath(data_folder , emissivity_type))
-		if contains(emissivity_type , "quarz")
-			@. _data[:,2] = 1.0 - _data[:,2]
-		end
 		eint = linear_interpolation(_data[:,1] , _data[:,2] , extrapolation_bc=Line())
 		ϵ = eint.(λ2)
 		 
@@ -395,44 +426,57 @@ begin
 end;
 
 # ╔═╡ a7ff8a2d-a81d-4474-b27f-565de2cf5dd3
-md""" Cristiansen wavelength: ϵ =$(ϵ[argmax(ϵ)]) at $(λ_max = λ2[argmax(ϵ)]) μm"""
+md""" 
+
+У каждого диэлектрического материала существует так называемая длина волны Кристиансена, это точка, длина волны, на которой поверхность практически не отражает излучение ( следовательно в этой точке излучательная способность равна нулю) : 
+
+Для выбранного материала **$( emissivity_type )** длина волна Кристиансена: 
+
+``\lambda_{Ch}`` = **$( λ2[argmax(ϵ)])** μm
+
+А излучательная способность в этой точке:
+
+``\epsilon`` = **$(ϵ[argmax(ϵ)])** 
+
+В соотвествии с формулой выше, при равенстве единице излучательной способности, пирометр будет регистрировать исключительно излучение поверхности, без паразитного отраженного излучения, так как коэффициент отражения будет равен нулю. 
+
+"""
 
 # ╔═╡ 91bbd553-4e4a-431d-9d54-b0f4882fd426
 md"""
-Sample temperature  ``T_1 `` = $(@bind T1 Slider(300.0:1e-2:3000 , show_value = true , default = 1000.0)), K
+Температура образца  ``T_1 `` = $(@bind T1 Slider(300.0:1e-2:3000 , show_value = true , default = 1273.15)), K
 
 """
 
 # ╔═╡ 15f1519b-d924-4fa9-b212-eebba75c544a
 md"""
-External radiation temperature ``T_2`` = $(@bind T2 Slider(300.0:1e-2:4000 , show_value = true , default = 2800.0)), K
+Температура паразитного источника ``T_2`` = $(@bind T2 Slider(300.0:1e-2:5000 , show_value = true , default = 2800.0)), K
 """
-
-# ╔═╡ 8cef05a1-2974-4c38-b73e-fa706f347fcc
-md" Show wavelength range: $(@bind λ_show RangeSlider(range(extrema(λ2)... , 1000)))"
 
 # ╔═╡ 1811e43c-f7db-47b1-9b83-bb38455d7db3
 pyrometers_vector2 = deepcopy(pyrometers_vector);
 
 # ╔═╡ 54339700-71fd-48bf-a2ef-0c3267b9d81b
-md" ### Recalculate T matrix $(@bind is_recalculate CheckBox(false))"
+md" **Пересчитать матрицу ошибки измерений $(@bind is_recalculate CheckBox(false))**"
 
 # ╔═╡ 7f76bc22-77c3-4eb3-9d49-588e653df2e7
 md"""
 
-###### The following section calculates the `measured` temperature and relative error of temperature mesurement for selected or custom pyrometer type   
+###### Расчет ошибки определения температуры поверхности для выбранного типа пирометра для различных значений температур паразитного излучения и поверхности   
+
+
 
 """
 
 # ╔═╡ a0197a9a-34bf-4a3e-af8a-c23ea777f482
-md" Use custom pyrometer : $(@bind use_custom CheckBox(default = false))"
+md" **Пользовательский диапазон длин волн** : $(@bind use_custom CheckBox(default = false))"
 
 # ╔═╡ 7793976e-6714-4bc1-9d97-412dd2a67480
 @bind custom_waves PlutoUI.combine() do Child
 
 md"""
 	
-Custom pyrometer wavelength range:
+Диапазон длин волн пользовательского пирометра:
 
 λleft = $(Child("left", NumberField(0.1:1e-3:20 , default = 7.2)))
 
@@ -444,10 +488,16 @@ end
 # ╔═╡ 5b647454-e5fc-4c65-8a0a-8eb499955cc1
 if is_recalculate && use_custom
 	p_custom = RadiationPyrometers.Pyrometer(type = "C" , λ = [custom_waves...] , ϵ = 1.0)
-end
+end;
 
 # ╔═╡ c9634225-fa52-4747-8f45-3511141bd164
-md" #### Try plotly! : $(@bind is_use_plotly CheckBox(false))"
+md""" 
+**Try plotly! : $(@bind is_use_plotly CheckBox(false))**
+
+"""
+
+# ╔═╡ efcc25ee-a507-4334-b338-f3e050a50c6b
+use_custom && p_custom
 
 # ╔═╡ e480137d-b6d9-4e18-92f0-640292bbb5f0
 function two_planck(l , ϵ , T1 , T2)
@@ -460,41 +510,6 @@ begin
 	I2 = @. (1.0 - ϵ) * Planck.ibb.(λ2 , T2)
 	I_measured =@. two_planck.(λ2 , ϵ , T1 , T2)
 end;
-
-# ╔═╡ 459f54a1-bbf0-4268-8bec-8142d436976a
-begin 
-	common_kwargs = (; fillrange=0, fillalpha=0.3,dpi=600,legend_background_color=:white, legend_foreground_color = :black, legend_position=:right , grid = true, gridlinewidth=3, gridstyle = :dot,minorgrid=true, box = :on, linewidth = 3)
-	
-	(xmin , xmax) = extrema(λ_show)
-	fl =@. (xmin <= λ2) & (λ2 <= xmax)
-	y_lims = extrema(I_measured[fl])
-	
-	
-	em_plot = Plots.plot(λ2 , eint.(λ2)  , label = nothing , title = emissivity_type; common_kwargs...)
-
-	
-	
-	ppp = Plots.plot(λ2 , I_measured  , label = "sum" ; common_kwargs...)
-	Plots.plot!(ppp, λ2 , I1  , label = "Tsample"  ; common_kwargs...)
-	Plots.plot!(ppp, λ2 , I2  , label = "Tlamp" ; common_kwargs...)
-	
-	
-	ylabel!(ppp , " I , , W/m²⋅sr⋅μm")
-	ylabel!(em_plot , " ϵ")
-	ylims!(ppp , y_lims)
-	ylims!(em_plot , (0.0,1.0))
-	for p in (ppp , em_plot)
-		xlabel!(p , " λ , μm ")
-		xlims!(p , (xmin , xmax))
-		
-	end
-end
-
-# ╔═╡ 5dafdc88-bd40-4347-aa62-e841d15c1bd7
-em_plot
-
-# ╔═╡ 18daa932-fd3a-4056-aa07-4dcf26c7d57a
-ppp
 
 # ╔═╡ 0404bf20-57a4-4c7c-bf23-70d3541a6787
 begin 
@@ -527,8 +542,62 @@ begin
 	pyrometers_vector2
 end
 
-# ╔═╡ cd9d9742-e9e6-47b9-afae-09e3018e7ebf
-Tmeas
+# ╔═╡ 01752ec9-b480-45b9-b299-d9c18d02a749
+begin 
+pyr_number = length(Tmeas)
+pyr_data = Matrix{Any}(undef , (pyr_number,4))	
+best_pyr = nothing
+dT_opt = 1e6
+for (i , (k , d)) in enumerate(Tmeas)
+	pyr_data[i , 1] = k 
+	pyr_data[i , 2] = d.Tmeas
+	pyr_data[i , 3] = d.ΔT
+	pyr_data[i , 4] = d.ΔTrel
+	if d.ΔT < dT_opt
+		dT_opt = d.ΔT
+		best_pyr = Pair(k , d.Tmeas)
+	end
+end
+pretty_table(HTML,pyr_data, column_labels= ["Тип","Тизм","ΔT, K","ΔT,%"] , top_left_string ="Ошибка определения температуры поверхности пирометрами различных типов при температуре  поверхности образца T₁= $(T1) и температуре паразитного излучения T₂= $(T2)" )
+
+end
+
+# ╔═╡ 459f54a1-bbf0-4268-8bec-8142d436976a
+begin 
+	common_kwargs = (; fillrange=0, fillalpha=0.3,dpi=600,legend_background_color=:white, legend_foreground_color = :black, legend_position=:right , grid = true, gridlinewidth=3, gridstyle = :dot,minorgrid=true, box = :on, linewidth = 3)
+	
+	(xmin , xmax) = extrema(λ_show)
+	fl =@. (xmin <= λ2) & (λ2 <= xmax)
+	y_lims = extrema(I_measured[fl])
+	
+	
+	em_plot = Plots.plot(λ2 , eint.(λ2)  , label = nothing , title = emissivity_type; common_kwargs...)
+
+	
+	title_str = (emissivity_type == "fixed") ? " ϵ = $(ϵ)" :  "материала $(to_names[emissivity_type])"
+	
+	ppp = Plots.plot(λ2 , I_measured  , label = "Сумма" ; common_kwargs...)
+	Plots.plot!(ppp, λ2 , I1  , label = "T₁ = $(T1)"  ; common_kwargs...)
+	Plots.plot!(ppp, λ2 , I2  , label = "T₂ = $(T2)" ; common_kwargs...)
+	title!(ppp , """Излучение $(title_str) 
+		   Tbest = $(last(best_pyr)) ($(first(best_pyr)) - type) """)
+	
+	ylabel!(ppp , " Спектральная интенсивность , , W/m²⋅sr⋅μm")
+	ylabel!(em_plot , " ϵ")
+	ylims!(ppp , y_lims)
+	ylims!(em_plot , (0.0,1.0))
+	for p in (ppp , em_plot)
+		xlabel!(p , " Длина волны , μm ")
+		xlims!(p , (xmin , xmax))
+		
+	end
+end
+
+# ╔═╡ 5dafdc88-bd40-4347-aa62-e841d15c1bd7
+em_plot
+
+# ╔═╡ 18daa932-fd3a-4056-aa07-4dcf26c7d57a
+ppp
 
 # ╔═╡ ac2343b5-6ea5-47b1-9c39-643cdf6d93af
 begin 
@@ -538,13 +607,13 @@ begin
 end;
 
 # ╔═╡ 48b184a0-b1df-461e-a3f5-3c8be72ab875
-md" Select pyrometer type: $(@bind selected_type Select(kvect , default = pyr_smaller_type) )"
+md" **Выбор типа пирометра** : $(@bind selected_type Select(kvect , default = pyr_smaller_type) )"
 
 # ╔═╡ 10298d52-d411-475f-b7f6-8562ed2a25bc
 if is_recalculate 
 	
-	T1_scan = 273.0:50:1373
-	T2_scan = 1273.0:50:3800
+	T1_scan = 273.15:50:2273.15
+	T2_scan = 1273.15:50:3800.15
 
 
 	if use_custom
@@ -617,9 +686,9 @@ end
 # ╔═╡ 3e19d251-91f6-4383-bfc8-ffe816570f42
 if is_recalculate
 	md"""
-	Tsurface = $(@bind T_surf_selected Select(T1_scan))
+	Tsurface = $(@bind T_surf_selected Select(T1_scan , default = 1273.15))
 	
-	Tlamp = $(@bind T_lamp_selected Select(T2_scan))
+	Tlamp = $(@bind T_lamp_selected Select(T2_scan , default = 2873.15))
 	
 	"""
 end	
@@ -675,7 +744,7 @@ PlanckFunctions = "~1.0.0"
 Plots = "~1.41.6"
 PlutoPlotly = "~0.6.5"
 PlutoUI = "~0.7.79"
-PrettyTables = "~3.2.3"
+PrettyTables = "~3.3.2"
 Revise = "~3.13.2"
 StaticArrays = "~1.9.17"
 """
@@ -686,7 +755,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "c4b1bec15af6b505309e68799d621a14fd2156cd"
+project_hash = "8240509b5a54dc2faea124088a63701d86fd69a8"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f7304359109c768cf32dc5fa2d371565bb63b68a"
@@ -1883,9 +1952,9 @@ version = "1.5.2"
 
 [[deps.PrettyTables]]
 deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "REPL", "Reexport", "StringManipulation", "Tables"]
-git-tree-sha1 = "211530a7dc76ab59087f4d4d1fc3f086fbe87594"
+git-tree-sha1 = "624de6279ab7d94fc9f672f0068107eb6619732c"
 uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-version = "3.2.3"
+version = "3.3.2"
 
     [deps.PrettyTables.extensions]
     PrettyTablesTypstryExt = "Typstry"
@@ -2275,9 +2344,9 @@ version = "0.34.10"
 
 [[deps.StringManipulation]]
 deps = ["PrecompileTools"]
-git-tree-sha1 = "a3c1536470bf8c5e02096ad4853606d7c8f62721"
+git-tree-sha1 = "d05693d339e37d6ab134c5ab53c29fce5ee5d7d5"
 uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
-version = "0.4.2"
+version = "0.4.4"
 
 [[deps.StructUtils]]
 deps = ["Dates", "UUIDs"]
@@ -2688,55 +2757,59 @@ version = "1.13.0+0"
 
 # ╔═╡ Cell order:
 # ╟─30743a02-c643-4bdc-837e-b97299f9520a
-# ╠═5e712312-0fc7-4205-84cc-834d57b814a3
-# ╠═ba23c985-74c4-41f3-8bc4-f7287e30e47f
-# ╠═73648cc6-a833-4ed1-bd6f-741315e34763
-# ╠═0c63ac2d-8ca5-4bac-be5b-04d396de529c
-# ╠═89a11dcd-b3b5-4349-930d-a66ad74e8fa2
-# ╠═9cd8fe6d-dcf9-472e-a019-19b4c1a182ed
+# ╟─5e712312-0fc7-4205-84cc-834d57b814a3
+# ╟─ba23c985-74c4-41f3-8bc4-f7287e30e47f
+# ╟─89a11dcd-b3b5-4349-930d-a66ad74e8fa2
+# ╟─9cd8fe6d-dcf9-472e-a019-19b4c1a182ed
 # ╟─15a5265e-61bc-440d-9a7d-ff10773b78d8
 # ╟─171409eb-22b5-4bc5-a8e2-eac0932a24f3
+# ╟─04f9f75e-34cc-4921-971e-6958ed960518
 # ╟─d5ee3913-66be-47d7-a755-699ba64b4f98
 # ╟─d442014a-20e6-4be4-ac7f-f13de329dec5
 # ╟─27b3c586-9eb0-4a51-b9ca-a9c0379fccdf
 # ╟─f22d22b6-5d98-4cc4-998f-a53e92809618
-# ╟─b9bee300-59a4-4c7a-b525-439f5c62253e
+# ╠═72095f49-f6c0-41a8-be2f-323a0bacfc51
 # ╟─7cc110e9-7655-4dfc-b1e0-ab3905866425
 # ╟─4d6337aa-cfc7-4154-a395-5aa53e23d01a
-# ╟─03d76e64-ebf4-432b-b9be-d4cb26275f55
+# ╠═03d76e64-ebf4-432b-b9be-d4cb26275f55
 # ╟─2ad3ec82-54a2-49ac-94ef-579f808dfb1a
 # ╟─8a066ee5-80e9-462f-9a61-15851468aa63
 # ╟─b7fac177-c211-4635-992f-e6473be7bdae
+# ╟─69f9052b-d925-49fb-8eb9-089671e64339
 # ╟─e2a9aa39-2490-4681-89d3-a01f058f6feb
 # ╟─02eee968-ff43-4b82-8d68-efede1a220dd
+# ╟─6c2d1616-4992-4123-a356-0545cf81ce08
 # ╟─9b08b767-7e8f-4483-9f2f-226022ce10e4
 # ╟─c69acbf6-94fb-4ac3-8d56-d1f9dda11440
-# ╠═a861d56f-f6c9-4754-b7a9-ed63713f1f2f
-# ╠═7071a6f4-e296-4e53-8e6f-24f1f038c1a5
+# ╟─7071a6f4-e296-4e53-8e6f-24f1f038c1a5
 # ╟─712828a7-fb54-42e6-95fc-233243190f59
 # ╟─f763d449-2a7a-4008-a183-823a774bc25e
 # ╟─667f7c30-56e0-461f-b35b-c924007eb9f2
+# ╟─a861d56f-f6c9-4754-b7a9-ed63713f1f2f
 # ╟─d08ec8f2-7689-4043-9f28-da06ab0124b9
+# ╟─3ddc9d4e-ff96-4173-899b-3eae0facb830
 # ╟─c5ac80ee-8143-4c28-bbff-2ac761c71fac
 # ╟─0c9fe7b1-374c-4fb8-9cfe-9337389713bf
 # ╟─bc2d93ae-6c30-462c-96e0-30fdb84d7c63
 # ╟─d3199b6e-9779-4def-b701-fe85d1035045
+# ╟─6aa82819-6f5a-43af-ac03-4775fce51564
 # ╟─72947d97-0a97-4064-a2fe-08d19dec0f0e
+# ╟─854f8c06-aac6-464f-899c-41ca706b259a
 # ╟─9ce196c1-8915-46da-9aba-f13d7655959a
-# ╟─3581aa29-714b-422a-8feb-d1a0c3ebeec7
 # ╟─86af6afc-b28a-4e84-952a-bd29710374f8
 # ╟─efc35420-d0e6-4795-94b6-d43289b4de44
 # ╟─6342e92b-4434-4e4b-aa2f-56405277caed
 # ╟─f181980f-bf72-4468-8daa-9461c6c901e0
+# ╟─620dce38-97ce-495f-9b23-1b8290cbd973
 # ╟─5dafdc88-bd40-4347-aa62-e841d15c1bd7
 # ╟─a7ff8a2d-a81d-4474-b27f-565de2cf5dd3
 # ╟─18daa932-fd3a-4056-aa07-4dcf26c7d57a
+# ╟─8cef05a1-2974-4c38-b73e-fa706f347fcc
 # ╟─36ba2396-bb5e-4d22-a58e-9ab27cd18b2d
 # ╟─91bbd553-4e4a-431d-9d54-b0f4882fd426
 # ╟─15f1519b-d924-4fa9-b212-eebba75c544a
-# ╟─cd9d9742-e9e6-47b9-afae-09e3018e7ebf
+# ╟─01752ec9-b480-45b9-b299-d9c18d02a749
 # ╟─0404bf20-57a4-4c7c-bf23-70d3541a6787
-# ╟─8cef05a1-2974-4c38-b73e-fa706f347fcc
 # ╟─459f54a1-bbf0-4268-8bec-8142d436976a
 # ╟─1811e43c-f7db-47b1-9b83-bb38455d7db3
 # ╟─ac2343b5-6ea5-47b1-9c39-643cdf6d93af
@@ -2745,12 +2818,13 @@ version = "1.13.0+0"
 # ╟─a0197a9a-34bf-4a3e-af8a-c23ea777f482
 # ╟─7793976e-6714-4bc1-9d97-412dd2a67480
 # ╟─48b184a0-b1df-461e-a3f5-3c8be72ab875
+# ╠═0cb50b02-ab41-416c-8610-c3ff318b117b
 # ╠═5b647454-e5fc-4c65-8a0a-8eb499955cc1
 # ╠═10298d52-d411-475f-b7f6-8562ed2a25bc
 # ╟─c9634225-fa52-4747-8f45-3511141bd164
-# ╟─0cb50b02-ab41-416c-8610-c3ff318b117b
 # ╟─3e19d251-91f6-4383-bfc8-ffe816570f42
 # ╟─ce4f2fdd-16b1-46e8-88a4-a952896b6df8
+# ╟─efcc25ee-a507-4334-b338-f3e050a50c6b
 # ╟─dd1561e2-233f-425a-832f-130b49f0bf0b
 # ╟─05ec0ea2-cfec-4e91-a46a-68bbdaefd562
 # ╟─e480137d-b6d9-4e18-92f0-640292bbb5f0
