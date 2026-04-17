@@ -369,6 +369,13 @@ end
 # ╔═╡ 86af6afc-b28a-4e84-952a-bd29710374f8
 λ2 = collect(range(0.1,15.0,1000));
 
+# ╔═╡ 6342e92b-4434-4e4b-aa2f-56405277caed
+begin 
+	I1 = @. ϵ * Planck.ibb.(λ2 , T1)
+	I2 = @. (1.0 - ϵ) * Planck.ibb.(λ2 , T2)
+	I_measured =@. two_planck.(λ2 , ϵ , T1 , T2)
+end;
+
 # ╔═╡ f181980f-bf72-4468-8daa-9461c6c901e0
 md"""
 Select the material (or fixed emissivity) : $(@bind  emissivity_type Select(vcat(["fixed"] , data_names), default = "fixed"))
@@ -410,6 +417,41 @@ External radiation temperature ``T_2`` = $(@bind T2 Slider(300.0:1e-2:4000 , sho
 
 # ╔═╡ 8cef05a1-2974-4c38-b73e-fa706f347fcc
 md" Show wavelength range: $(@bind λ_show RangeSlider(range(extrema(λ2)... , 1000)))"
+
+# ╔═╡ 459f54a1-bbf0-4268-8bec-8142d436976a
+begin 
+	common_kwargs = (; fillrange=0, fillalpha=0.3,dpi=600,legend_background_color=:white, legend_foreground_color = :black, legend_position=:right , grid = true, gridlinewidth=3, gridstyle = :dot,minorgrid=true, box = :on, linewidth = 3)
+	
+	(xmin , xmax) = extrema(λ_show)
+	fl =@. (xmin <= λ2) & (λ2 <= xmax)
+	y_lims = extrema(I_measured[fl])
+	
+	
+	em_plot = Plots.plot(λ2 , eint.(λ2)  , label = nothing , title = emissivity_type; common_kwargs...)
+
+	
+	
+	ppp = Plots.plot(λ2 , I_measured  , label = "sum" ; common_kwargs...)
+	Plots.plot!(ppp, λ2 , I1  , label = "Tsample"  ; common_kwargs...)
+	Plots.plot!(ppp, λ2 , I2  , label = "Tlamp" ; common_kwargs...)
+	
+	
+	ylabel!(ppp , " I , , W/m²⋅sr⋅μm")
+	ylabel!(em_plot , " ϵ")
+	ylims!(ppp , y_lims)
+	ylims!(em_plot , (0.0,1.0))
+	for p in (ppp , em_plot)
+		xlabel!(p , " λ , μm ")
+		xlims!(p , (xmin , xmax))
+		
+	end
+end
+
+# ╔═╡ 5dafdc88-bd40-4347-aa62-e841d15c1bd7
+em_plot
+
+# ╔═╡ 18daa932-fd3a-4056-aa07-4dcf26c7d57a
+ppp
 
 # ╔═╡ 1811e43c-f7db-47b1-9b83-bb38455d7db3
 pyrometers_vector2 = deepcopy(pyrometers_vector);
@@ -453,48 +495,6 @@ md" #### Try plotly! : $(@bind is_use_plotly CheckBox(false))"
 function two_planck(l , ϵ , T1 , T2)
 	return ϵ * Planck.ibb.(l , T1) + (1.0 - ϵ) * Planck.ibb.(l , T2)
 end
-
-# ╔═╡ 6342e92b-4434-4e4b-aa2f-56405277caed
-begin 
-	I1 = @. ϵ * Planck.ibb.(λ2 , T1)
-	I2 = @. (1.0 - ϵ) * Planck.ibb.(λ2 , T2)
-	I_measured =@. two_planck.(λ2 , ϵ , T1 , T2)
-end;
-
-# ╔═╡ 459f54a1-bbf0-4268-8bec-8142d436976a
-begin 
-	common_kwargs = (; fillrange=0, fillalpha=0.3,dpi=600,legend_background_color=:white, legend_foreground_color = :black, legend_position=:right , grid = true, gridlinewidth=3, gridstyle = :dot,minorgrid=true, box = :on, linewidth = 3)
-	
-	(xmin , xmax) = extrema(λ_show)
-	fl =@. (xmin <= λ2) & (λ2 <= xmax)
-	y_lims = extrema(I_measured[fl])
-	
-	
-	em_plot = Plots.plot(λ2 , eint.(λ2)  , label = nothing , title = emissivity_type; common_kwargs...)
-
-	
-	
-	ppp = Plots.plot(λ2 , I_measured  , label = "sum" ; common_kwargs...)
-	Plots.plot!(ppp, λ2 , I1  , label = "Tsample"  ; common_kwargs...)
-	Plots.plot!(ppp, λ2 , I2  , label = "Tlamp" ; common_kwargs...)
-	
-	
-	ylabel!(ppp , " I , , W/m²⋅sr⋅μm")
-	ylabel!(em_plot , " ϵ")
-	ylims!(ppp , y_lims)
-	ylims!(em_plot , (0.0,1.0))
-	for p in (ppp , em_plot)
-		xlabel!(p , " λ , μm ")
-		xlims!(p , (xmin , xmax))
-		
-	end
-end
-
-# ╔═╡ 5dafdc88-bd40-4347-aa62-e841d15c1bd7
-em_plot
-
-# ╔═╡ 18daa932-fd3a-4056-aa07-4dcf26c7d57a
-ppp
 
 # ╔═╡ 0404bf20-57a4-4c7c-bf23-70d3541a6787
 begin 
