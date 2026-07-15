@@ -103,6 +103,33 @@ T_starting  - starting temperature value
         sl = solve(prob,NelderMead())
         return sl.u[]   
     end
+    (p::Pyrometer)(i) = measure(p , i)
+    """
+    intensity(p::Pyrometer , Tmeasured)
+
+Returns the intensity value which will give the temperature `Tmeasured`
+"""
+function intensity(p::Pyrometer , Tmeasured)
+        return   if !is_narrow_band(p)
+            p.ϵ[] * Planck.ibb(p.λ , Tmeasured)
+        else
+            p.ϵ[] * Planck.band_power(Tmeasured , λₗ=p.λ[1] , λᵣ=p.λ[2])
+        end
+    end
+        """
+        convert_temperature(p , Tmeasured  , ϵ_new)
+
+    Converts temperature `Tmeasured` measured using pyrometer `p` with it specified emissivity 
+    to a new temperature measured with `ϵ_new`
+    """
+    function convert_temperature(p::Pyrometer , Tmeasured  , ϵ_new)
+        i = intensity(p , Tmeasured)
+        _e = p.ϵ[]
+        set_emissivity(p , ϵ_new)
+        Tnew = measure(p , i)
+        set_emissivity(p , _e) # returning previous emissivity
+        return Tnew
+    end
     """
     Base.isless(p1::Pyrometer,p2::Pyrometer)
 
@@ -125,7 +152,7 @@ function wavelengths_number()
 Returns the total number of wavelength for the vector of pyrometers
 """
 function wavelengths_number(p::Vector{Pyrometer})
-    return sum(wlength,p)
+    return sum(wlength , p)
 end
     """
     full_wavelength_range()
@@ -187,10 +214,10 @@ function produce_pyrometers()
 Setter for spectral emissivity
 """
 function set_emissivity(p::Pyrometer,em_value::Float64)
-        if !(0.0<em_value<=1.0)
+        if !(0.0 < em_value <= 1.0)
             em_value = 1.0
         end
-        p.ϵ[]=em_value
+        p.ϵ[] = em_value
     end
 
     """

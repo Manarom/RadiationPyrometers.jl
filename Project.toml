@@ -12,12 +12,7 @@ PlanckFunctions = "56edaee7-e77f-43d7-994d-8307b8de0a62"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-LinearAlgebra = "1.11.0"
-Optimization = "4.3.0"
-OptimizationOptimJL = "0.4.3"
-OrderedCollections = "1.8.1"
 PlanckFunctions = "1.0.0"
-StaticArrays = "1.9.13"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
